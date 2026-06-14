@@ -10,7 +10,7 @@ pipeline {
         APP_NAME     = 'spring-boot-app'
         NAMESPACE    = 'jenkins-apps'
         
-        // 1. Matches your Docker Hub account name
+        // Matches your Docker Hub account username
         DOCKER_USER  = 'indu1999'
         IMAGE_TAG    = "${DOCKER_USER}/${APP_NAME}:${BUILD_NUMBER}"
     }
@@ -38,8 +38,8 @@ pipeline {
                         # Build the image using the environment tags
                         ./docker build -t ${IMAGE_TAG} .
                         
-                        # Clean login format to bypass character string escaping bugs
-                        echo "\$HUB_TOKEN" | ./docker login --username "\$HUB_USER" --password-stdin
+                        # Direct argument authentication flag input layout
+                        ./docker login --username "\$HUB_USER" --password "\$HUB_TOKEN"
                         
                         # Push the image layers to Docker Hub
                         ./docker push ${IMAGE_TAG}
