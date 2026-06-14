@@ -26,7 +26,8 @@ pipeline {
         stage('2. Build & Push Docker Image') {
             steps {
                 echo "Installing Docker CLI binary and managing image lifecycle..."
-                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'HUB_USER', passwordVariable: 'HUB_TOKEN')]) {
+                // Pulls the fresh clean Secret Text credential token profile
+                withCredentials([string(credentialsId: 'docker-hub-token-id', variable: 'HUB_TOKEN')]) {
                     sh """
                         # Download official static Docker CLI binary if missing
                         if [ ! -f ./docker ]; then
@@ -38,8 +39,8 @@ pipeline {
                         # Build the image using the environment tags
                         ./docker build -t ${IMAGE_TAG} .
                         
-                        # Direct argument authentication flag input layout
-                        ./docker login --username "\$HUB_USER" --password "\$HUB_TOKEN"
+                        # Direct token-pipe configuration to completely bypass header masking bugs
+                        echo "\$HUB_TOKEN" | ./docker login --username "${DOCKER_USER}" --password-stdin
                         
                         # Push the image layers to Docker Hub
                         ./docker push ${IMAGE_TAG}
