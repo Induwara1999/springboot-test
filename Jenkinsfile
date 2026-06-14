@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    // This tells Jenkins to pull and use the Maven tool we just configured
+    tools {
+        maven 'maven-3.9.6'
+    }
+
     environment {
         CLUSTER_URL  = 'https://192.168.1.6:6443'
         APP_NAME     = 'spring-boot-app'
@@ -11,14 +16,17 @@ pipeline {
     stages {
         stage('1. Maven Build & Test') {
             steps {
-                echo 'Compiling App inside Maven Container...'
-                sh 'docker run --rm -v "${WORKSPACE}":/usr/src/mymaven -v /root/.m2:/root/.m2 -w /usr/src/mymaven maven:3.9.6-eclipse-temurin-17 mvn clean package -DskipTests'
+                echo 'Compiling App using Native Maven Tool...'
+                // Runs standard maven package cleanly directly on the workspace
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('2. Build Docker Image') {
             steps {
                 echo "Building Container Image from Dockerfile..."
+                // Note: If this stage throws a similar 'docker: not found' error, 
+                // we will quickly mount your Ubuntu host's docker socket to your Jenkins container.
                 sh "docker build -t ${IMAGE_TAG} ."
             }
         }
