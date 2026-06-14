@@ -13,6 +13,10 @@ pipeline {
         // Matches your Docker Hub account username
         DOCKER_USER  = 'indu1999'
         IMAGE_TAG    = "${DOCKER_USER}/${APP_NAME}:${BUILD_NUMBER}"
+        
+        // Custom variables for your environment links
+        REPO_URL     = 'https://github.com/Induwara1999/spring-boot-app' // Update if your repo name is different
+        JENKINS_URL  = 'http://192.168.1.6:8080' // Standard local Jenkins server URL setup
     }
 
     stages {
@@ -26,7 +30,6 @@ pipeline {
         stage('2. Build & Push Docker Image') {
             steps {
                 echo "Installing Docker CLI binary and managing image lifecycle..."
-                // Back to your verified credential ID, isolating the token variable explicitly
                 withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'HUB_USER', passwordVariable: 'HUB_TOKEN')]) {
                     sh """
                         # Download official static Docker CLI binary if missing
@@ -54,13 +57,15 @@ pipeline {
                 echo "Interacting with Rancher API..."
                 withCredentials([string(credentialsId: 'kubernetes-cluster-token', variable: 'KUBE_TOKEN')]) {
                     sh """
-                        # Create or Update Kubernetes Deployment
+                        # Create or Update Kubernetes Deployment with custom descriptive annotations
                         curl -k -X POST -H "Authorization: Bearer \${KUBE_TOKEN}" -H "Content-Type: application/yaml" --data "
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ${APP_NAME}
   namespace: ${NAMESPACE}
+  annotations:
+    field.cattle.io/description: 'Source Code: ${REPO_URL} | Build Pipeline: ${JENKINS_URL}'
 spec:
   replicas: 1
   selector:
@@ -77,7 +82,7 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
-" ${CLUSTER_URL}/apis/apps/v1/namespaces/${NAMESPACE}/deployments || echo 'Deployment already exists'
+" ${CLUSTER_URL}/apis/apps/v1/namespaces/${NAMESPACE}/deployments || curl -k -X PATCH -H "Authorization: Bearer \${KUBE_TOKEN}" -H "Content-Type: application/strategic-merge-patch+json" --data "{\\"spec\\":{\\"template\\":{\\"spec\\":{\\"containers\\":[{\\"name\\":\\"spring-app\\",\\"image\\":\\"${IMAGE_TAG}\\"}]}}}}" ${CLUSTER_URL}/apis/apps/v1/namespaces/${NAMESPACE}/deployments/${APP_NAME}
 
                         # Create or Update NodePort Service
                         curl -k -X POST -H "Authorization: Bearer \${KUBE_TOKEN}" -H "Content-Type: application/yaml" --data "
