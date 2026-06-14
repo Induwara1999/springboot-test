@@ -1,6 +1,7 @@
 pipeline {
     agent any
 
+    // Uses the native Jenkins Maven installation configured in Global Tool Management
     tools {
         maven 'maven-3.9.6'
     }
@@ -24,15 +25,19 @@ pipeline {
             steps {
                 echo "Installing Docker CLI binary and building image..."
                 sh """
-                    # 1. Download official static Docker CLI binary if not present
+                    # 1. Download official static Docker CLI binary if missing
                     if [ ! -f ./docker ]; then
-                        echo "Downloading Docker CLI..."
+                        echo "Downloading Docker CLI v26.1.4..."
                         curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-26.1.4.tgz | tar -xzO docker/docker > ./docker
                         chmod +x ./docker
                     fi
                     
                     # 2. Run the build using our local downloaded binary
                     ./docker build -t ${IMAGE_TAG} .
+
+                    # 3. Transfer the image from Docker over into the Local Kubernetes Containerd Cache
+                    echo "Syncing image into containerd k8s namespace..."
+                    ./docker save ${IMAGE_TAG} | ctr -n k8s.io images import -
                 """
             }
         }
