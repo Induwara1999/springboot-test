@@ -27,7 +27,7 @@ pipeline {
                     # 1. Download official static Docker CLI binary if not present
                     if [ ! -f ./docker ]; then
                         echo "Downloading Docker CLI..."
-                        curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-24.0.7.tgz | tar -xzO docker/docker > ./docker
+                        curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-26.1.4.tgz | tar -xzO docker/docker > ./docker
                         chmod +x ./docker
                     fi
                     
