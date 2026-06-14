@@ -9,7 +9,7 @@ pipeline {
         CLUSTER_URL  = 'https://192.168.1.6:6443'
         APP_NAME     = 'spring-boot-app'
         NAMESPACE    = 'jenkins-apps'
-        IMAGE_TAG    = "local/${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_TAG    = "${APP_NAME}:${BUILD_NUMBER}"
     }
 
     stages {
