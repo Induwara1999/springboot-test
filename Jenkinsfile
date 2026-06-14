@@ -1,7 +1,6 @@
 pipeline {
     agent any
 
-    // This tells Jenkins to pull and use the Maven tool we just configured
     tools {
         maven 'maven-3.9.6'
     }
@@ -17,17 +16,24 @@ pipeline {
         stage('1. Maven Build & Test') {
             steps {
                 echo 'Compiling App using Native Maven Tool...'
-                // Runs standard maven package cleanly directly on the workspace
                 sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('2. Build Docker Image') {
             steps {
-                echo "Building Container Image from Dockerfile..."
-                // Note: If this stage throws a similar 'docker: not found' error, 
-                // we will quickly mount your Ubuntu host's docker socket to your Jenkins container.
-                sh "docker build -t ${IMAGE_TAG} ."
+                echo "Installing Docker CLI binary and building image..."
+                sh """
+                    # 1. Download official static Docker CLI binary if not present
+                    if [ ! -f ./docker ]; then
+                        echo "Downloading Docker CLI..."
+                        curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-24.0.7.tgz | tar -xzO docker/docker > ./docker
+                        chmod +x ./docker
+                    fi
+                    
+                    # 2. Run the build using our local downloaded binary
+                    ./docker build -t ${IMAGE_TAG} .
+                """
             }
         }
 
