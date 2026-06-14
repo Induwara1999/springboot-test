@@ -62,7 +62,7 @@ spec:
       containers:
       - name: spring-app
         image: ${IMAGE_TAG}
-        imagePullPolicy: Never
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
 " ${CLUSTER_URL}/apis/apps/v1/namespaces/${NAMESPACE}/deployments || echo 'Deployment already exists'
