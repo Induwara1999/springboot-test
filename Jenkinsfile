@@ -10,7 +10,7 @@ pipeline {
         APP_NAME     = 'spring-boot-app'
         NAMESPACE    = 'jenkins-apps'
         
-        // 1. CHANGE THIS VALUE TO YOUR EXACT DOCKER HUB USERNAME
+        // 1. Matches your Docker Hub account name
         DOCKER_USER  = 'indu1999'
         IMAGE_TAG    = "${DOCKER_USER}/${APP_NAME}:${BUILD_NUMBER}"
     }
@@ -26,8 +26,7 @@ pipeline {
         stage('2. Build & Push Docker Image') {
             steps {
                 echo "Installing Docker CLI binary and managing image lifecycle..."
-                // Utilizes your pre-saved credentials profile inside Jenkins to log into Docker Hub safely
-                withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'DOCKER_HUB_USER', passwordVariable: 'DOCKER_HUB_TOKEN')]) {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'HUB_USER', passwordVariable: 'HUB_TOKEN')]) {
                     sh """
                         # Download official static Docker CLI binary if missing
                         if [ ! -f ./docker ]; then
@@ -36,9 +35,13 @@ pipeline {
                             chmod +x ./docker
                         fi
                         
-                        # Build, authenticate, and push to the public registry
+                        # Build the image using the environment tags
                         ./docker build -t ${IMAGE_TAG} .
-                        echo "\${DOCKER_HUB_TOKEN}" | ./docker login -u "\${DOCKER_HUB_USER}" --password-stdin
+                        
+                        # Clean login format to bypass character string escaping bugs
+                        echo "\$HUB_TOKEN" | ./docker login --username "\$HUB_USER" --password-stdin
+                        
+                        # Push the image layers to Docker Hub
                         ./docker push ${IMAGE_TAG}
                     """
                 }
