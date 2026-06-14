@@ -12,7 +12,6 @@ pipeline {
         stage('1. Maven Build & Test') {
             steps {
                 echo 'Compiling App inside Maven Container...'
-                // Spins up a dynamic container to build the target jar artifact
                 sh 'docker run --rm -v "${WORKSPACE}":/usr/src/mymaven -v /root/.m2:/root/.m2 -w /usr/src/mymaven maven:3.9.6-eclipse-temurin-17 mvn clean package -DskipTests'
             }
         }
@@ -30,7 +29,7 @@ pipeline {
                 withCredentials([string(credentialsId: 'kubernetes-cluster-token', variable: 'KUBE_TOKEN')]) {
                     sh """
                         # Create or Update Kubernetes Deployment
-                        curl -k -X POST -H "Authorization: Bearer ${KUBE_TOKEN}" -H "Content-Type: application/yaml" --data "
+                        curl -k -X POST -H "Authorization: Bearer \${KUBE_TOKEN}" -H "Content-Type: application/yaml" --data "
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -55,7 +54,7 @@ spec:
 " ${CLUSTER_URL}/apis/apps/v1/namespaces/${NAMESPACE}/deployments || echo 'Deployment already exists'
 
                         # Create or Update NodePort Service
-                        curl -k -X POST -H "Authorization: Bearer ${KUBE_TOKEN}" -H "Content-Type: application/yaml" --data "
+                        curl -k -X POST -H "Authorization: Bearer \${KUBE_TOKEN}" -H "Content-Type: application/yaml" --data "
 apiVersion: v1
 kind: Service
 metadata:
@@ -77,6 +76,8 @@ spec:
     }
     
     post {
-        cleanWs()
+        always {
+            cleanWs()
+        }
     }
 }
