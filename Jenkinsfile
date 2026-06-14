@@ -1,7 +1,6 @@
 pipeline {
     agent any
 
-    // Uses the native Jenkins Maven installation configured in Global Tool Management
     tools {
         maven 'maven-3.9.6'
     }
@@ -10,7 +9,10 @@ pipeline {
         CLUSTER_URL  = 'https://192.168.1.6:6443'
         APP_NAME     = 'spring-boot-app'
         NAMESPACE    = 'jenkins-apps'
-        IMAGE_TAG    = "${APP_NAME}:${BUILD_NUMBER}"
+        
+        // 1. CHANGE THIS VALUE TO YOUR EXACT DOCKER HUB USERNAME
+        DOCKER_USER  = 'indu1999'
+        IMAGE_TAG    = "${DOCKER_USER}/${APP_NAME}:${BUILD_NUMBER}"
     }
 
     stages {
@@ -21,24 +23,25 @@ pipeline {
             }
         }
 
-        stage('2. Build Docker Image') {
+        stage('2. Build & Push Docker Image') {
             steps {
-                echo "Installing Docker CLI binary and building image..."
-                sh """
-                    # 1. Download official static Docker CLI binary if missing
-                    if [ ! -f ./docker ]; then
-                        echo "Downloading Docker CLI v26.1.4..."
-                        curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-26.1.4.tgz | tar -xzO docker/docker > ./docker
-                        chmod +x ./docker
-                    fi
-                    
-                    # 2. Run the build using our local downloaded binary
-                    ./docker build -t ${IMAGE_TAG} .
-
-                    # 3. Transfer the image from Docker over into the Local Kubernetes Containerd Cache
-                    echo "Syncing image into containerd k8s namespace..."
-                    ./docker save ${IMAGE_TAG} | ctr -n k8s.io images import -
-                """
+                echo "Installing Docker CLI binary and managing image lifecycle..."
+                // Utilizes your pre-saved credentials profile inside Jenkins to log into Docker Hub safely
+                withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'DOCKER_HUB_USER', passwordVariable: 'DOCKER_HUB_TOKEN')]) {
+                    sh """
+                        # Download official static Docker CLI binary if missing
+                        if [ ! -f ./docker ]; then
+                            echo "Downloading Docker CLI v26.1.4..."
+                            curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-26.1.4.tgz | tar -xzO docker/docker > ./docker
+                            chmod +x ./docker
+                        fi
+                        
+                        # Build, authenticate, and push to the public registry
+                        ./docker build -t ${IMAGE_TAG} .
+                        echo "\${DOCKER_HUB_TOKEN}" | ./docker login -u "\${DOCKER_HUB_USER}" --password-stdin
+                        ./docker push ${IMAGE_TAG}
+                    """
+                }
             }
         }
 
@@ -67,7 +70,7 @@ spec:
       containers:
       - name: spring-app
         image: ${IMAGE_TAG}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
 " ${CLUSTER_URL}/apis/apps/v1/namespaces/${NAMESPACE}/deployments || echo 'Deployment already exists'
